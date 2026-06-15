@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == "emonhasanriyad@gmail.com" ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Products collection
+    match /products/{productId} {
+      allow read: if true; // Publicly readable
+      allow create, update: if isAdmin() && isValidId(productId) && isValidProduct(incoming());
+      allow delete: if isAdmin();
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll(['name', 'price', 'image', 'category', 'description', 'stock']) &&
+             data.name is string && data.name.size() > 0 &&
+             data.price is number && data.price >= 0 &&
+             data.stock is number && data.stock >= 0 &&
+             data.image is string &&
+             data.category is string &&
+             data.description is string;
+    }
+
+    // Admins collection
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; // Only manageable via console or higher-level logic
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow create: if isSignedIn() && incoming().userId == request.auth.uid && isValidOrder(incoming());
+      allow read: if isAdmin() || (isSignedIn() && existing().userId == request.auth.uid);
+      allow update, delete: if isAdmin();
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+    }
+
+    function isValidOrder(data) {
+      return 'customerName' in data && data.customerName is string &&
+             'customerPhone' in data && data.customerPhone is string &&
+             'customerAddress' in data && data.customerAddress is string &&
+             'items' in data && data.items is list &&
+             'total' in data && (data.total is number || data.total is int || data.total is float) &&
+             'status' in data && data.status == 'pending' &&
+             'userId' in data && data.userId == request.auth.uid &&
+             'createdAt' in data && data.createdAt is string &&
+             'paymentMethod' in data && data.paymentMethod in ['cod', 'bkash', 'nagad'] &&
+             (!('transactionId' in data) || data.transactionId is string);
+    }
+  }
+}

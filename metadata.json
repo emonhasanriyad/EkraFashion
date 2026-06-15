@@ -1,0 +1,8 @@
+{
+  "name": "Iqra Fashion - Premium Three-Piece Store",
+  "description": "Pre-eminent online shopping destination for exclusive, premium, and traditional Three-Piece salwar kameez collections across Bangladesh by Iqra Fashion.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
